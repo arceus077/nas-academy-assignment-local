@@ -1,0 +1,9 @@
+{
+    "listening": "Listening on",
+    "message": "Nas Academy Assignment Microservice",
+    "routeNotFound": "Request Not Found",
+    "secured_listening": "Securely Listening on",
+    "dbConSuccess": "Database connected successfully",
+    "dbConError": "Cannot connect to database",
+    "dbConDisconnect": "Database disconnected successfully"
+}
