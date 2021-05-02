@@ -6,11 +6,11 @@ const userSchema = new mongoose.Schema({
         required: true,
     },
     prevTime: {
-        type: Number,
+        type: String,
         required: false,
     },
     currentTime: {
-        type: Number,
+        type: String,
         required: true,
     },
     count: {
@@ -19,4 +19,4 @@ const userSchema = new mongoose.Schema({
     },
 });
 
-export default mongoose.model('user', userSchema);
+export default mongoose.model('users', userSchema);

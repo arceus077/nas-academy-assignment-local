@@ -7,7 +7,7 @@ const mongooseConfig = async () => {
     return await mongoose.connect(mongoPath, {
         useNewUrlParser: true,
         useUnifiedTopology: true,
-        useFindAndModify: true,
+        useFindAndModify: false,
     })
 };
 
