@@ -10,26 +10,30 @@ This proj does not has linting script due to some setup issues. Please feel free
 
 NOTE: A user cannot send more than 10 requests within 10 seconds, that is a feature implemented using custom request rate middleware, and not a bug :P
 
-In this service, there are 4 APIs, One is called internally for truncating and initialising the Parking DB.
-For Database, this project is using DB Mongoose from https://cloud.mongodb.com/v2/. It's a free limited version for the sake of this project, so there maybe sometimes latency issues. Please ignore it otherwise.
-
-Two tables/Schemas are used
+Two variables are used locally
 1) Users 2)Parkings
-users table is used for keeping track of request of users as per IP address
-parkings table is used to keep records of prakings and cars
+users var is used for keeping track of request of users as per IP address
+parkings var is used to keep records of prakings and cars
 
-Port no 5001 is used, It can be modified in .env file. Don't forget to update the DB_API variable also if updating the port number.
+Port no 5001 is used, It can be modified in .env file.
 
+<<<<<<<<<<<<<< Version 2.0.0 >>>>>>>>>>>>>>>>>>>>>
 
-_ APIs _
+In version 2.0.0,
+The project is updated to fetch and save data locally by using variables at run-time without using any libraries.
+It is availabe in branch feature/car-park-wo-db.
+All libraries, DB connections are removed.
+Only express, dotenv libraries were used as per guidelines. (jest is used for unit tests)
+The parking slots are initialised when the server starts using constructor.
+The logic remains identical, only the approach has changed for fetching and saving data locally during runtime.
+Note: everytime server starts/re-starts previous data will be lost.
 
-/carpark/initialise
-This API Truncates parkings Db and initialise car parking spots
+ALL APIs are .get('api_endpoint');
 
-/carpark/parkCar/:number
+/carpark/parkCar/:carnumber
 This API parks the car for the given car number
 
-/carpark/unparkCar/:number
+/carpark/unparkCar/:carnumber
 This API unparks the car for the given car number
 
 /carpark/info/:number
