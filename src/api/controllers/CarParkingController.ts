@@ -1,45 +1,46 @@
 import { Request, Response } from 'express';
-// import { camelizeKeys } from 'xcase';
-import * as _ from 'lodash';
-import parkingSchema from '../../schema/parkings';
-import { ResponseStatus } from '../../utils/ResponseStatus'
+import { ResponseStatus } from '../../utils/ResponseStatus';
+import carParkingHelper from './helpers/carParkingHelper';
+
+const { updateParkingValue } = carParkingHelper;
 
 class CarParkingController {
-    public async initialiseParkingSlots(req: Request, res: Response) {
-        // Get total slots number from .env file
-        let totalSlots = +process.env.TOTAL_SLOTS;
 
-        // If total slots is zero by default it'll take 20 slots
-        if (totalSlots === 0) {
-            totalSlots = 20;
-        }
+    private parkings: Array<{
+        slotNumber: number;
+        carNumber: String;
+    }>;
+
+    constructor() {
+        this.initialiseParkingSlots();
+    }
+
+    public initialiseParkingSlots = () => {
+        // Get total slots number from .env file, If total slots is zero by default it'll take 20 slots
+        let totalSlots = +process.env.TOTAL_SLOTS ? +process.env.TOTAL_SLOTS : 20;
 
         try {
-            console.log('initialiseParkingSlots :: req.url', `${req.url}`, 'initialiseParkingSlots called');
-            const { deletedCount } = await parkingSchema.deleteMany({}); // Delete all existing parking slots to initialise new Data
+            console.log('initialiseParkingSlots called', ' :: ', `Initialising ${totalSlots} parking spots`);
 
             const parkingSlots = Array.from(
                 Array(totalSlots),
                 (value, index) =>  ({ slotNumber: index + 1, carNumber: '' }),
             );
-            const response = await parkingSchema.insertMany(parkingSlots); // Save all the parking spots for the first time server loads/reloads
 
-            return res.status(ResponseStatus.STATUS_OK).json({
-                deletedCount,
-                parkingDetails: response,
-                success: true,
-            });
+            // Save all the parking spots for the first time server loads/reloads
+            this.parkings = [...parkingSlots];
+
+            console.info(`${new Date().toLocaleTimeString()}: Successful :: Total Parking Spots: ${this.parkings.length}`);
         } catch(error) {
             console.error(error);
-            return res.status(ResponseStatus.INTERNAL_SERVER_ERROR).send({ message: error.message, success: false });
         }
     };
 
-    public async parkAndGetSlotNumber(req: Request, res: Response) {
+    public parkAndGetSlotNumber = async (req: Request, res: Response) => {
         // API 1 >  To park the car and get the slot number, if all slots occupied respective message is sent
-        const { number }  = req.params;
+        const { carnumber }  = req.params;
 
-        if (!number) { // if no params is received send appropriate response
+        if (!carnumber) { // if no params is received send appropriate response
             return res.status(ResponseStatus.BAD_REQUEST).send({ message: 'Car Number cannot be empty', success: false });
         }
 
@@ -47,11 +48,10 @@ class CarParkingController {
             console.log('parkAndGetSlotNumber :: req.url', `${req.url}`, 'parkAndGetSlotNumber called');
 
             // Check if the car number already exists
-            const carCheck: any = await parkingSchema.findOne({ carNumber: number });
+            const carCheck = this.parkings.find(value => value.carNumber === carnumber);
             if (carCheck) {
                 return res.status(ResponseStatus.STATUS_OK).json({
                     parkingDetails: {
-                        id: carCheck._id,
                         carNumber: carCheck.carNumber,
                         slotNumber: carCheck.slotNumber,
                     },
@@ -59,72 +59,78 @@ class CarParkingController {
                     success: true,
                 });
             }
-            // if the car number is not already parked, then park the car
-            const response: any = await parkingSchema.findOneAndUpdate({ carNumber: "" }, { carNumber: number }, { new: true });
-            if (response) {
+
+            // if the car number is not parked, then park the car
+            const index = this.parkings.findIndex(value => value.carNumber.length === 0);
+            if (index !== -1) {
+                const response = updateParkingValue(this.parkings, index, carnumber);
+                // Set the data
+                this.parkings = [...response];
                 return res.status(ResponseStatus.STATUS_OK).json({
                     parkingDetails: {
-                        id: response._id,
-                        carNumber: response.carNumber,
-                        slotNumber: response.slotNumber,
+                        carNumber: carnumber,
+                        slotNumber: response[index].slotNumber,
                     },
-                    message: `Successfully Parked! Your Parking No is: P- ${response.slotNumber}`,
+                    message: `Successfully Parked! Your Parking No is: P- ${response[index].slotNumber}`,
                     success: true,
                 });
             }
 
-            // if the car was not parked due to no slots available send appropriate response
+            // if the car was not parked due to no slots available, then send appropriate response
             return res.status(ResponseStatus.STATUS_OK).json({
                 parkingDetails: {},
                 message: 'All parking spaces are occupied, Please try again later',
                 success: true,
             });
-            
+
         } catch(error) {
             console.error(error);
             return res.status(ResponseStatus.INTERNAL_SERVER_ERROR).send({ message: error.message, success: false });
         }
     };
 
-    public async unparkAndGetSlotNumber(req: Request, res: Response) {
+    public unparkAndGetSlotNumber = async (req: Request, res: Response) => {
         // API 2 >  To un-park the car and get the slot number, if no such car exists in parking respective message is sent
-        const { number }  = req.params;
+        const { carnumber }  = req.params;
 
-        // if no params is received send appropriate response
-        if (!number) {
+        // if no params is received, then send appropriate response
+        if (!carnumber) {
             return res.status(ResponseStatus.BAD_REQUEST).send({ message: 'Car Number cannot be empty', success: false });
         }
 
         try {
             console.log('unparkAndGetSlotNumber :: req.url', `${req.url}`, 'unparkAndGetSlotNumber called');
 
-            // if the car number does not exists then park the car
-            const response: any = await parkingSchema.findOneAndUpdate({ carNumber: number }, { carNumber: "" }, { new: true });
-            if (response) {
+            // if the car for the given number is parked then un-park the car
+            const index = this.parkings.findIndex(value => value.carNumber === carnumber);
+            if (index !== -1) {
+                const response = updateParkingValue(this.parkings, index, '');
+                // Set the data
+                this.parkings = [...response];
                 return res.status(ResponseStatus.STATUS_OK).json({
                     parkingDetails: {
-                        id: response._id,
-                        slotNumber: response.slotNumber,
+                        slotNumber: response[index].slotNumber,
+                        carnumber: response[index].carNumber,
                     },
-                    message: `Successfully Un-Parked the car! Parking Slot: P- ${response.slotNumber} is now free`,
+                    message: `Successfully Un-Parked the car! Parking Slot: P- ${response[index].slotNumber} is now free`,
                     success: true,
                 });
             }
 
-            // if No such car is parked send appropriate response
+            // if No such car is parked, then send appropriate response
             return res.status(ResponseStatus.STATUS_OK).json({
                 parkingDetails: {},
                 message: 'No such car is parked, Please give a correct car number',
                 success: true,
             });
-            
+
         } catch(error) {
             console.error(error);
             return res.status(ResponseStatus.INTERNAL_SERVER_ERROR).send({ message: error.message, success: false });
         }
     };
 
-    public async getParkingDetails(req: Request, res: Response) {
+    public getParkingDetails = async (req: Request, res: Response) => {
         // API 3 >  To park the car and get the slot number, if all slots occupied respective message is sent
         const { number }  = req.params;
 
@@ -135,17 +141,15 @@ class CarParkingController {
         try {
             console.log('getParkingDetails :: req.url', `${req.url}`, 'getParkingDetails called');
 
-            let response: any;
-            let condition;
+            let index;
             // if given number is integer then add check for slot number also
             if(!isNaN(number)) {
-                condition = [{ carNumber: number }, { slotNumber: +number }];
+                index = this.parkings.findIndex(value => value.carNumber === number || value.slotNumber === +number);
             } else {
-                condition = [{ carNumber: number }];
+                index = this.parkings.findIndex(value => value.carNumber === number);
             }
 
-            response = await parkingSchema.findOne({ $or: condition });
-            if (!response) {
+            if (index === -1) {
                 //  return data if no details are found neither for car/slot number
                 return res.status(ResponseStatus.STATUS_OK).json({
                     parkingDetails: {},
@@ -154,12 +158,12 @@ class CarParkingController {
                 });
             }
 
+            const { carNumber, slotNumber } = this.parkings[index];
             // get car parking details for the given car/slot number
             return res.status(ResponseStatus.STATUS_OK).json({
                 parkingDetails: {
-                    id: response._id,
-                    carNumber: response.carNumber,
-                    slotNumber: response.slotNumber,
+                    carNumber: carNumber,
+                    slotNumber: slotNumber,
                 },
                 message: 'Details for the given slot number/car number',
                 success: true,
@@ -170,22 +174,14 @@ class CarParkingController {
         }
     };
 
-    public async getAllParkingDetails(req: Request, res: Response) {
+    public getAllParkingDetails = async (req: Request, res: Response) => {
         // Complimentary API > Get all parking slot details
         try {
             console.log('getAllParkingDetails :: req.url', `${req.url}`, 'getAllParkingDetails called');
 
-            const response: any = await parkingSchema.find();
-            if (!response) {
-                // return if no details found
-                return res.status(ResponseStatus.STATUS_OK).json({
-                    parkingDetails: {},
-                    message: `No Parking Area Found`,
-                    success: true,
-                });
-            }
-
             //  all details
+            const response = [...this.parkings];
+
             return res.status(ResponseStatus.STATUS_OK).json({
                 parkingDetails: response,
                 message: 'All Parking area details',
@@ -196,6 +192,6 @@ class CarParkingController {
             return res.status(ResponseStatus.INTERNAL_SERVER_ERROR).send({ message: error.message, success: false });
         }
     };
-}
+};
 
 export default CarParkingController;
