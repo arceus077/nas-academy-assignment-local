@@ -91,36 +91,50 @@ class CarParkingController {
 
     public unparkAndGetSlotNumber = async (req: Request, res: Response) => {
         // API 2 >  To un-park the car and get the slot number, if no such car exists in parking respective message is sent
-        const { carnumber }  = req.params;
+        const { slotnumber }  = req.params;
 
         // if no params is received, then send appropriate response
-        if (!carnumber) {
-            return res.status(ResponseStatus.BAD_REQUEST).send({ message: 'Car Number cannot be empty', success: false });
+        if (!slotnumber) {
+            return res.status(ResponseStatus.BAD_REQUEST).send({ message: 'Slot Number cannot be empty', success: false });
         }
 
         try {
             console.log('unparkAndGetSlotNumber :: req.url', `${req.url}`, 'unparkAndGetSlotNumber called');
 
-            // if the car for the given number is parked then un-park the car
-            const index = this.parkings.findIndex(value => value.carNumber === carnumber);
+            // find details for the given slot number
+            const index = this.parkings.findIndex(value => value.slotNumber === +slotnumber);
             if (index !== -1) {
+                // if the given slot number is already free then send appropriate response
+                const carnumber = this.parkings[index].carNumber;
+                if (carnumber.length === 0) {
+                    return res.status(ResponseStatus.STATUS_OK).json({
+                        parkingDetails: {
+                            ...this.parkings[index],
+                        },
+                        message: `No car is parked in the given slot, Parking Slot: P- ${+slotnumber} is already free`,
+                        success: true,
+                    });
+                }
+
+                // if a car is parked in the given slot number, then un-park the car
                 const response = updateParkingValue(this.parkings, index, '');
                 // Set the data
                 this.parkings = [...response];
                 return res.status(ResponseStatus.STATUS_OK).json({
                     parkingDetails: {
                         slotNumber: response[index].slotNumber,
-                        carnumber: response[index].carNumber,
+                        carNumber: response[index].carNumber,
                     },
-                    message: `Successfully Un-Parked the car! Parking Slot: P- ${response[index].slotNumber} is now free`,
+                    message:
+                    `Successfully Un-Parked car- ${carnumber}. Parking Slot: P- ${+slotnumber} is now free`,
                     success: true,
                 });
             }
 
-            // if No such car is parked, then send appropriate response
+            // if slot no is invalid, then send appropriate response
             return res.status(ResponseStatus.STATUS_OK).json({
                 parkingDetails: {},
-                message: 'No such car is parked, Please give a correct car number',
+                message: 'No such parking slot exists, Please give a correct slot number',
                 success: true,
             });
 

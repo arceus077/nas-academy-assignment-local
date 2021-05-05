@@ -18,7 +18,7 @@ class Routes {
             });
         app.route('/carpark/parkCar/:carnumber') // park the car for the given car number
             .get(this.requestRateController.checkRequestRate, this.parkingController.parkAndGetSlotNumber);
-        app.route('/carpark/unparkCar/:carnumber') // remove the car parked for the given car number
+        app.route('/carpark/unparkCar/:slotnumber') // remove the car parked for the given car number
             .get(this.requestRateController.checkRequestRate, this.parkingController.unparkAndGetSlotNumber);
         app.route('/carpark/info/:number') // get details for that car number or slot number
             .get(this.requestRateController.checkRequestRate, this.parkingController.getParkingDetails);

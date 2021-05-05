@@ -33,8 +33,8 @@ ALL APIs are .get('api_endpoint');
 /carpark/parkCar/:carnumber
 This API parks the car for the given car number
 
-/carpark/unparkCar/:carnumber
-This API unparks the car for the given car number
+/carpark/unparkCar/:slotnumber
+This API unparks the car for the given slot number
 
 /carpark/info/:number
 This API gets details for that car number or slot number
